@@ -112,6 +112,107 @@ struct SettingsView: View {
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(12)
 
+                // Tempos do Pomodoro
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Tempos do Pomodoro", systemImage: "timer")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text("Configure os tempos padrão do modo Pomodoro. O Timer Simples pode ser ajustado diretamente na interface.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.bottom, 4)
+
+                    VStack(spacing: 8) {
+                        // Pomodoro Duration
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Duração do Pomodoro")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+
+                                Text("Tempo de foco (minutos)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                Text("\(viewModel.pomodoroDuration)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                    .frame(width: 30, alignment: .trailing)
+
+                                Stepper("", value: $viewModel.pomodoroDuration, in: 1...60)
+                                    .labelsHidden()
+                            }
+                        }
+                        .padding(12)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+
+                        // Short Break Duration
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Pausa Curta")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+
+                                Text("Descanso entre pomodoros (minutos)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                Text("\(viewModel.shortBreakDuration)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                    .frame(width: 30, alignment: .trailing)
+
+                                Stepper("", value: $viewModel.shortBreakDuration, in: 1...30)
+                                    .labelsHidden()
+                            }
+                        }
+                        .padding(12)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+
+                        // Long Break Duration
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Pausa Longa")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+
+                                Text("Descanso após 4 pomodoros (minutos)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                Text("\(viewModel.longBreakDuration)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                    .frame(width: 30, alignment: .trailing)
+
+                                Stepper("", value: $viewModel.longBreakDuration, in: 1...60)
+                                    .labelsHidden()
+                            }
+                        }
+                        .padding(12)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding(16)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
+
                 // Geral
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Geral", systemImage: "gear")

@@ -19,7 +19,14 @@ final class PomodoroViewModel: ObservableObject {
     }
 
     // MARK: - Public States
-    @Published var mode: Mode = .simple
+    @Published var mode: Mode = .pomodoro {
+        didSet {
+            // Quando muda de modo, atualiza o tempo se não estiver rodando
+            if !isRunning {
+                updateTimeForCurrentMode()
+            }
+        }
+    }
     @Published var label: PomodoroSession.ActivityLabel = .estudo
     @Published var remainingTime: TimeInterval = 25 * 1
     @Published var isRunning = false
@@ -36,14 +43,107 @@ final class PomodoroViewModel: ObservableObject {
     var currentCyclePosition = 1 // Tornado público para acessar no AppDelegate
     private var initialTime: TimeInterval = 25 * 1 // Tempo inicial da sessão atual
 
-    // MARK: - Timer durations (em segundos)
-    private let pomodoroDuration: TimeInterval = 25 * 1
-    private let shortBreakDuration: TimeInterval = 5 * 1
-    private let longBreakDuration: TimeInterval = 15 * 1
+    // MARK: - Timer durations (em minutos, configuráveis)
+    @Published var pomodoroDuration: Int = 25 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+    @Published var shortBreakDuration: Int = 5 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+    @Published var longBreakDuration: Int = 15 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+    // Timer simples com horas, minutos e segundos
+    @Published var simpleTimerHours: Int = 0 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+    @Published var simpleTimerMinutes: Int = 25 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+    @Published var simpleTimerSeconds: Int = 0 {
+        didSet {
+            saveTimerDurations()
+            updateRemainingTimeIfNeeded()
+        }
+    }
+
+    // Conversão para segundos (usado internamente)
+    private var pomodoroDurationSeconds: TimeInterval {
+        TimeInterval(pomodoroDuration * 60)
+    }
+    private var shortBreakDurationSeconds: TimeInterval {
+        TimeInterval(shortBreakDuration * 60)
+    }
+    private var longBreakDurationSeconds: TimeInterval {
+        TimeInterval(longBreakDuration * 60)
+    }
+    private var simpleTimerDurationSeconds: TimeInterval {
+        TimeInterval((simpleTimerHours * 3600) + (simpleTimerMinutes * 60) + simpleTimerSeconds)
+    }
 
     // MARK: - Computed Properties
     var currentSessionDuration: TimeInterval {
         return initialTime
+    }
+
+    // Atualiza o tempo baseado no modo atual
+    private func updateTimeForCurrentMode() {
+        if mode == .pomodoro {
+            remainingTime = pomodoroDurationSeconds
+            initialTime = pomodoroDurationSeconds
+            // Reseta o ciclo ao mudar para pomodoro
+            currentCyclePosition = 1
+            completedPomodoros = 0
+            currentGroupId = nil
+        } else {
+            remainingTime = simpleTimerDurationSeconds
+            initialTime = simpleTimerDurationSeconds
+        }
+    }
+
+    // Atualiza o remainingTime quando as configurações mudam (apenas se não estiver rodando)
+    private func updateRemainingTimeIfNeeded() {
+        guard !isRunning else { return }
+
+        if mode == .pomodoro {
+            // Determina qual deveria ser o tempo baseado na posição do ciclo
+            if currentCyclePosition >= 8 {
+                // Após pausa longa, volta para pomodoro
+                remainingTime = pomodoroDurationSeconds
+                initialTime = pomodoroDurationSeconds
+            } else if currentCyclePosition % 2 == 1 {
+                // Posições ímpares (1, 3, 5, 7) = trabalho
+                remainingTime = pomodoroDurationSeconds
+                initialTime = pomodoroDurationSeconds
+            } else if (completedPomodoros % 4 == 0 && completedPomodoros > 0) || currentCyclePosition == 8 {
+                // Pausa longa (após 4 pomodoros)
+                remainingTime = longBreakDurationSeconds
+                initialTime = longBreakDurationSeconds
+            } else {
+                // Pausa curta
+                remainingTime = shortBreakDurationSeconds
+                initialTime = shortBreakDurationSeconds
+            }
+        } else {
+            // Timer simples - atualiza para o tempo configurado
+            remainingTime = simpleTimerDurationSeconds
+            initialTime = simpleTimerDurationSeconds
+        }
     }
 
     var groupedSessions: [PomodoroGroup] {
@@ -88,6 +188,15 @@ final class PomodoroViewModel: ObservableObject {
     // MARK: - Init
     init() {
         loadSessions()
+        loadTimerDurations()
+        // Define o tempo inicial baseado nas configurações carregadas e modo atual
+        if mode == .pomodoro {
+            remainingTime = pomodoroDurationSeconds
+            initialTime = pomodoroDurationSeconds
+        } else {
+            remainingTime = simpleTimerDurationSeconds
+            initialTime = simpleTimerDurationSeconds
+        }
     }
 
     // Função para limpar sessões antigas incompatíveis
@@ -121,7 +230,7 @@ final class PomodoroViewModel: ObservableObject {
         }
 
         if remainingTime <= 0 {
-            remainingTime = (mode == .pomodoro) ? pomodoroDuration : 25 * 1
+            remainingTime = (mode == .pomodoro) ? pomodoroDurationSeconds : simpleTimerDurationSeconds
         }
 
         // Guarda o tempo inicial para cálculo de progresso
@@ -153,7 +262,7 @@ final class PomodoroViewModel: ObservableObject {
 
     func reset() {
         stop()
-        remainingTime = (mode == .pomodoro) ? pomodoroDuration : 25 * 1
+        remainingTime = (mode == .pomodoro) ? pomodoroDurationSeconds : simpleTimerDurationSeconds
         initialTime = remainingTime
         currentCycle = 1
         completedPomodoros = 0
@@ -173,7 +282,7 @@ final class PomodoroViewModel: ObservableObject {
                 currentGroupId = nil
                 currentCyclePosition = 0
                 completedPomodoros = 0
-                remainingTime = pomodoroDuration
+                remainingTime = pomodoroDurationSeconds
             } else {
                 // Incrementa posição no ciclo
                 currentCyclePosition += 1
@@ -185,11 +294,11 @@ final class PomodoroViewModel: ObservableObject {
 
                 // alterna entre pomodoro e pausas
                 if completedPomodoros % 4 == 0 && completedPomodoros > 0 {
-                    remainingTime = longBreakDuration
+                    remainingTime = longBreakDurationSeconds
                 } else if currentCyclePosition % 2 == 0 {
-                    remainingTime = shortBreakDuration
+                    remainingTime = shortBreakDurationSeconds
                 } else {
-                    remainingTime = pomodoroDuration
+                    remainingTime = pomodoroDurationSeconds
                 }
             }
 
@@ -214,7 +323,7 @@ final class PomodoroViewModel: ObservableObject {
     private func recordSession(completed: Bool) {
         guard let start = sessionStartTime else { return }
 
-        let elapsed = (mode == .pomodoro ? pomodoroDuration : 25 * 1) - remainingTime
+        let elapsed = (mode == .pomodoro ? pomodoroDurationSeconds : simpleTimerDurationSeconds) - remainingTime
         let session = PomodoroSession(
             startTime: start,
             endTime: Date(),
@@ -260,6 +369,36 @@ final class PomodoroViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "PomodoroSessions"),
            let decoded = try? JSONDecoder().decode([PomodoroSession].self, from: data) {
             sessions = decoded
+        }
+    }
+
+    private func saveTimerDurations() {
+        UserDefaults.standard.set(pomodoroDuration, forKey: "PomodoroDuration")
+        UserDefaults.standard.set(shortBreakDuration, forKey: "ShortBreakDuration")
+        UserDefaults.standard.set(longBreakDuration, forKey: "LongBreakDuration")
+        UserDefaults.standard.set(simpleTimerHours, forKey: "SimpleTimerHours")
+        UserDefaults.standard.set(simpleTimerMinutes, forKey: "SimpleTimerMinutes")
+        UserDefaults.standard.set(simpleTimerSeconds, forKey: "SimpleTimerSeconds")
+    }
+
+    private func loadTimerDurations() {
+        if UserDefaults.standard.object(forKey: "PomodoroDuration") != nil {
+            pomodoroDuration = UserDefaults.standard.integer(forKey: "PomodoroDuration")
+        }
+        if UserDefaults.standard.object(forKey: "ShortBreakDuration") != nil {
+            shortBreakDuration = UserDefaults.standard.integer(forKey: "ShortBreakDuration")
+        }
+        if UserDefaults.standard.object(forKey: "LongBreakDuration") != nil {
+            longBreakDuration = UserDefaults.standard.integer(forKey: "LongBreakDuration")
+        }
+        if UserDefaults.standard.object(forKey: "SimpleTimerHours") != nil {
+            simpleTimerHours = UserDefaults.standard.integer(forKey: "SimpleTimerHours")
+        }
+        if UserDefaults.standard.object(forKey: "SimpleTimerMinutes") != nil {
+            simpleTimerMinutes = UserDefaults.standard.integer(forKey: "SimpleTimerMinutes")
+        }
+        if UserDefaults.standard.object(forKey: "SimpleTimerSeconds") != nil {
+            simpleTimerSeconds = UserDefaults.standard.integer(forKey: "SimpleTimerSeconds")
         }
     }
 }

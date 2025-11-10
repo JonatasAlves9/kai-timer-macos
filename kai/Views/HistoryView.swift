@@ -13,6 +13,26 @@ struct HistoryView: View {
         return df
     }()
 
+    // Formata TimeInterval em horas, minutos e segundos
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let totalSeconds = Int(seconds)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let secs = totalSeconds % 60
+
+        if hours > 0 {
+            if minutes > 0 {
+                return "\(hours)h \(minutes)min \(secs)s"
+            } else {
+                return "\(hours)h \(secs)s"
+            }
+        } else if minutes > 0 {
+            return "\(minutes)min \(secs)s"
+        } else {
+            return "\(secs)s"
+        }
+    }
+
     // Busca o grupo atualizado sempre que renderizar
     private var selectedGroup: PomodoroGroup? {
         guard let id = selectedGroupId else { return nil }
@@ -28,7 +48,11 @@ struct HistoryView: View {
                         .padding()
                 } else {
                     ForEach(viewModel.groupedSessions) { group in
-                        GroupRow(group: group, dateFormatter: dateFormatter)
+                        GroupRow(
+                            group: group,
+                            dateFormatter: dateFormatter,
+                            formattedDuration: formatDuration(group.totalDuration)
+                        )
                             .tag(group.id)
                             .contextMenu {
                                 Button(role: .destructive) {
@@ -79,6 +103,7 @@ struct HistoryView: View {
 struct GroupRow: View {
     let group: PomodoroGroup
     let dateFormatter: DateFormatter
+    let formattedDuration: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -115,7 +140,7 @@ struct GroupRow: View {
                 .font(.footnote)
                 .foregroundColor(.gray)
 
-            Text("Duração total: \(Int(group.totalDuration / 60)) min")
+            Text("Duração total: \(formattedDuration)")
                 .font(.footnote)
                 .foregroundColor(.gray)
         }
@@ -127,6 +152,26 @@ struct GroupDetailView: View {
     let group: PomodoroGroup
     let dateFormatter: DateFormatter
     let onDelete: () -> Void
+
+    // Formata TimeInterval em horas, minutos e segundos
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let totalSeconds = Int(seconds)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let secs = totalSeconds % 60
+
+        if hours > 0 {
+            if minutes > 0 {
+                return "\(hours)h \(minutes)min \(secs)s"
+            } else {
+                return "\(hours)h \(secs)s"
+            }
+        } else if minutes > 0 {
+            return "\(minutes)min \(secs)s"
+        } else {
+            return "\(secs)s"
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -181,7 +226,7 @@ struct GroupDetailView: View {
                     HStack {
                         Label("Duração total", systemImage: "timer")
                         Spacer()
-                        Text("\(Int(group.totalDuration / 60)) min")
+                        Text(formatDuration(group.totalDuration))
                     }
 
                     HStack {
@@ -205,7 +250,12 @@ struct GroupDetailView: View {
                         .font(.headline)
 
                     ForEach(Array(group.sessions.enumerated()), id: \.element.id) { index, session in
-                        SessionDetailRow(session: session, index: index, dateFormatter: dateFormatter)
+                        SessionDetailRow(
+                            session: session,
+                            index: index,
+                            dateFormatter: dateFormatter,
+                            formattedDuration: formatDuration(session.duration)
+                        )
                     }
                 }
             }
@@ -219,6 +269,7 @@ struct SessionDetailRow: View {
     let session: PomodoroSession
     let index: Int
     let dateFormatter: DateFormatter
+    let formattedDuration: String
 
     var sessionTypeLabel: String {
         if session.type == .simple {
@@ -270,7 +321,7 @@ struct SessionDetailRow: View {
                 Text("•")
                     .foregroundColor(.secondary)
 
-                Text("\(Int(session.duration / 60)) min")
+                Text(formattedDuration)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

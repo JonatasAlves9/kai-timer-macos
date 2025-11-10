@@ -25,14 +25,14 @@ struct _0poApp: App {
     var body: some Scene {
         WindowGroup(id: "main") {
             ContentView()
-                .frame(minWidth: 500, minHeight: 600)
+                .frame(minWidth: 500, minHeight: 500)
                 .environmentObject(viewModel)
                 .onAppear {
                     PomodoroViewModel.shared = viewModel
                 }
         }
         .windowResizability(.contentSize)
-        .defaultSize(width: 600, height: 700)
+        .defaultSize(width: 550, height: 650)
         .handlesExternalEvents(matching: Set(arrayLiteral: "main"))
         .commands {
             CommandGroup(replacing: .newItem) {
